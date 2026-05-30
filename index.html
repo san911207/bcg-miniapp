@@ -101,6 +101,17 @@
     color:var(--accent);font-size:10px;display:flex;align-items:center;justify-content:center;
     border:1.5px solid var(--accent);font-weight:800}
   .arrow{flex:none;color:var(--sub);font-size:13px}
+  /* real dual-range slider */
+  .rng{position:relative;height:34px;margin:8px 6px 0}
+  .rng .rbar{position:absolute;top:15px;left:0;right:0;height:4px;background:#e1e4e8;border-radius:2px}
+  .rng .rfill{position:absolute;top:15px;height:4px;background:var(--accent);border-radius:2px}
+  .rng input[type=range]{position:absolute;left:0;width:100%;top:0;height:34px;margin:0;background:none;
+    pointer-events:none;-webkit-appearance:none;appearance:none}
+  .rng input[type=range]::-webkit-slider-thumb{pointer-events:auto;-webkit-appearance:none;width:22px;height:22px;
+    border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:grab}
+  .rng input[type=range]::-moz-range-thumb{pointer-events:auto;width:22px;height:22px;border-radius:50%;
+    background:#fff;border:2px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:grab}
+  .rread{color:var(--text);font-weight:700}
   /* settings group banner */
   .grp{margin:18px 2px 9px;padding:11px 13px;border-radius:12px;font-weight:800;font-size:14px;
     display:flex;align-items:center;gap:7px}
@@ -152,8 +163,9 @@
       <div class="sec">시간대</div>
       <div class="card">
         <div class="hint" style="margin-bottom:4px">① 바에서 시간 범위 정하기</div>
-        <div class="track"><div class="bar"></div><div class="fill"></div><div class="knob a"></div><div class="knob b"></div></div>
-        <div class="timeval"><span>06:00</span><span style="color:var(--text);font-weight:700">06:00 ~ 10:00</span><span>22:00</span></div>
+        <div class="rng" data-rng="add"><div class="rbar"></div><div class="rfill"></div>
+          <input type="range" min="5" max="22" value="6" class="rmin"><input type="range" min="5" max="22" value="10" class="rmax"></div>
+        <div class="timeval"><span>5시</span><span class="rread">06:00 ~ 10:00</span><span>22시</span></div>
         <div class="hint" style="margin:16px 0 0">② 우선순위 — 드래그로 순서 변경 (왼쪽이 가장 먼저 잡음)</div>
         <div class="prio-row" id="timePrio">
           <span class="phint">먼저</span><span class="arrow">→</span>
@@ -211,8 +223,9 @@
       <div class="subsec">주말 시간 — 범위 + 우선순위</div>
       <div class="card">
         <div class="hint" style="margin-bottom:4px">① 바에서 시간 범위 정하기</div>
-        <div class="track"><div class="bar"></div><div class="fill"></div><div class="knob a"></div><div class="knob b"></div></div>
-        <div class="timeval"><span>06:00</span><span style="color:var(--text);font-weight:700">06:00 ~ 10:00</span><span>22:00</span></div>
+        <div class="rng" data-rng="set"><div class="rbar"></div><div class="rfill"></div>
+          <input type="range" min="5" max="22" value="6" class="rmin"><input type="range" min="5" max="22" value="10" class="rmax"></div>
+        <div class="timeval"><span>5시</span><span class="rread">06:00 ~ 10:00</span><span>22시</span></div>
         <div class="hint" style="margin:16px 0 0">② 우선순위 — 드래그 (왼쪽이 먼저)</div>
         <div class="prio-row" id="timePrio2">
           <span class="phint">먼저</span><span class="arrow">→</span>
@@ -269,10 +282,11 @@
   // ── 봇이 URL hash 로 넘긴 현재 상태 디코드 ──
   let STATE = { settings:{}, watches:[], history:[], weekendSat:'', weekendSun:'' };
   try {
-    const h = location.hash.replace(/^#/, '');
-    if (h) STATE = JSON.parse(decodeURIComponent(escape(atob(h.replace(/-/g,'+').replace(/_/g,'/')))));
+    const s = new URLSearchParams(location.search).get('s');
+    if (s) STATE = JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
   } catch(e){}
   const S = STATE.settings || {};
+  const chipHour=c=>parseInt(c.lastChild&&c.lastChild.nodeType===3?c.lastChild.nodeValue:c.textContent,10);
 
   // ── UI 인터랙션 (탭/칩/세그/토글/달력/드래그) ──
   const mbText={add:'➕ 이 감시 추가하기',set:'💾 설정 저장',list:''};
@@ -299,17 +313,47 @@
       i===0?list.insertBefore(ci,sib):list.insertBefore(sib,ci);
       [...list.querySelectorAll('.ci .no')].forEach((n,j)=>n.textContent=j+1);
     });}));
-  document.querySelectorAll('.prio-row').forEach(row=>{ let dragEl=null;
+  function attachDrag(row){ let dragEl=null;
     const renum=()=>[...row.querySelectorAll('.tchip .pn')].forEach((n,j)=>n.textContent=j+1);
     row.querySelectorAll('.tchip').forEach(chip=>{
-      chip.addEventListener('dragstart',()=>{dragEl=chip;setTimeout(()=>chip.style.opacity='.3',0)});
-      chip.addEventListener('dragend',()=>{chip.style.opacity='';row.querySelectorAll('.tchip').forEach(c=>c.classList.remove('dragover'))});
-      chip.addEventListener('dragover',e=>{e.preventDefault();if(chip!==dragEl)chip.classList.add('dragover')});
-      chip.addEventListener('dragleave',()=>chip.classList.remove('dragover'));
-      chip.addEventListener('drop',e=>{e.preventDefault();chip.classList.remove('dragover');
+      chip.ondragstart=()=>{dragEl=chip;setTimeout(()=>chip.style.opacity='.3',0)};
+      chip.ondragend=()=>{chip.style.opacity='';row.querySelectorAll('.tchip').forEach(c=>c.classList.remove('dragover'))};
+      chip.ondragover=e=>{e.preventDefault();if(chip!==dragEl)chip.classList.add('dragover')};
+      chip.ondragleave=()=>chip.classList.remove('dragover');
+      chip.ondrop=e=>{e.preventDefault();chip.classList.remove('dragover');
         if(!dragEl||chip===dragEl)return;const items=[...row.querySelectorAll('.tchip')];
-        items.indexOf(dragEl)<items.indexOf(chip)?chip.after(dragEl):chip.before(dragEl);renum();});
-    });});
+        items.indexOf(dragEl)<items.indexOf(chip)?chip.after(dragEl):chip.before(dragEl);renum();};
+    });}
+  document.querySelectorAll('.prio-row').forEach(attachDrag);
+
+  // 범위 변경 시 우선순위 칩 재생성 (기존 in-range 순서 보존)
+  function regenPrio(which, lo, hi){
+    const row=document.getElementById(which==='add'?'timePrio':'timePrio2'); if(!row)return;
+    const existing=[...row.querySelectorAll('.tchip')].map(chipHour);
+    const order=existing.filter(h=>h>=lo&&h<=hi);
+    for(let h=lo;h<=hi;h++) if(!order.includes(h)) order.push(h);
+    [...row.querySelectorAll('.tchip')].forEach(c=>c.remove());
+    order.forEach((h,i)=>{const el=document.createElement('div');el.className='tchip';el.draggable=true;
+      el.innerHTML='<span class="pn">'+(i+1)+'</span>'+h+'시';row.appendChild(el);});
+    attachDrag(row);
+  }
+  function applyPrioOrder(id, ord){ const row=document.getElementById(id); if(!row||!Array.isArray(ord))return;
+    ord.forEach(h=>{const c=[...row.querySelectorAll('.tchip')].find(x=>chipHour(x)===h);if(c)row.appendChild(c);});
+    [...row.querySelectorAll('.tchip .pn')].forEach((n,j)=>n.textContent=j+1); }
+  // 진짜 듀얼 슬라이더
+  function initRange(rng){
+    const mn=rng.querySelector('.rmin'),mx=rng.querySelector('.rmax'),fill=rng.querySelector('.rfill');
+    const read=rng.parentElement.querySelector('.rread'); const LO=5,HI=22;
+    function upd(active){ let a=+mn.value,b=+mx.value;
+      if(a>b){ if(active==='min'){b=a;mx.value=a;}else{a=b;mn.value=b;} }
+      fill.style.left=((a-LO)/(HI-LO)*100)+'%'; fill.style.right=((HI-b)/(HI-LO)*100)+'%';
+      read.textContent=String(a).padStart(2,'0')+':00 ~ '+String(b).padStart(2,'0')+':00';
+      const key=a+'-'+b; if(rng._key!==key){rng._key=key;regenPrio(rng.dataset.rng,a,b);} }
+    mn.oninput=()=>upd('min'); mx.oninput=()=>upd('max');
+    rng._set=(a,b)=>{mn.value=a;mx.value=b;rng._key=null;upd();}; rng._get=()=>[Math.min(+mn.value,+mx.value),Math.max(+mn.value,+mx.value)];
+    upd();
+  }
+  document.querySelectorAll('.rng').forEach(initRange);
 
   // ── 헬퍼: 라벨로 위젯 찾기 ──
   const rowByLabel=t=>[...document.querySelectorAll('#set .row')].find(r=>r.querySelector('.lbl')&&r.querySelector('.lbl').textContent.includes(t));
@@ -317,8 +361,8 @@
   const setSw=(t,v)=>{const r=rowByLabel(t);if(r)r.querySelector('.sw').classList.toggle('on',!!v);};
   const segVal=t=>{const r=rowByLabel(t);if(!r)return'';const d=r.querySelector('.seg div.on');return d?d.textContent.trim():'';};
   const setSeg=(t,txt)=>{const r=rowByLabel(t);if(!r)return;r.querySelectorAll('.seg div').forEach(d=>d.classList.toggle('on',d.textContent.trim()===txt));};
-  const courseOrder=sel=>[...document.querySelectorAll(sel+' .ci')].map(c=>c.childNodes[2]?c.textContent.replace(/^\s*≡\s*\d+\s*/,'').replace(/▲▼/g,'').trim():'').map(s=>s.replace(/[▲▼]/g,'').trim()).filter(Boolean);
-  const timePrio=id=>[...document.querySelectorAll('#'+id+' .tchip')].map(c=>parseInt(c.textContent,10)).filter(n=>!isNaN(n));
+  const courseOrder=sel=>[...document.querySelectorAll(sel+' .ci')].map(c=>c.textContent.replace(/[≡▲▼]/g,'').replace(/^\s*\d+\s*/,'').trim()).filter(Boolean);
+  const timePrio=id=>[...document.querySelectorAll('#'+id+' .tchip')].map(chipHour).filter(n=>!isNaN(n));
 
   // ── 상태 프리로드 ──
   function preload(){
@@ -336,6 +380,13 @@
     if(S.weekendPlayers){const r=rowByLabel('주말 예약 인원');if(r)r.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.textContent===S.weekendPlayers));}
     // 주말 날짜 표시
     if(STATE.weekendSat){const r=rowByLabel('주말 자동 감시 켜기');if(r)r.querySelector('.hint').textContent=`다음 토 ${md(STATE.weekendSat)} · 일 ${md(STATE.weekendSun)} (매주 자동 이동)`;}
+    // 주말 시간 범위 + 우선순위
+    const setRng=document.querySelector('.rng[data-rng="set"]');
+    if(setRng && typeof S.weekendTimeMin==='number'){ setRng._set(S.weekendTimeMin, S.weekendTimeMax); applyPrioOrder('timePrio2', S.weekendTimePriority); }
+    // 주말 코스 순서
+    if(Array.isArray(S.weekendCourses)){ const list=document.querySelector('#set .clist');
+      if(list){ S.weekendCourses.forEach(name=>{ const ci=[...list.querySelectorAll('.ci')].find(c=>c.textContent.includes(name)); if(ci)list.appendChild(ci); });
+        [...list.querySelectorAll('.ci .no')].forEach((n,j)=>n.textContent=j+1); } }
     // 목록 갱신
     renderList();
   }
@@ -371,6 +422,8 @@
       weekendPlayers: wp,
       weekendCourses: courseOrder('#set .clist'),
       weekendTimePriority: timePrio('timePrio2'),
+      weekendTimeMin: Math.min(...timePrio('timePrio2')),
+      weekendTimeMax: Math.max(...timePrio('timePrio2')),
     }};
   }
   function collectWatch(){
