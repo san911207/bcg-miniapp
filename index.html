@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>BCG 봇</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg:#f0f2f5; --card:#ffffff; --accent:#3390ec; --accent2:#2b9e44;
+    --text:#1c1c1e; --sub:#8e8e93; --line:#e4e6eb; --warn:#e6a817; --danger:#e0533d;
+  }
+  /* 실제 미니앱: 폰 프레임 제거, Telegram webview 풀스크린 */
+  body{background:var(--bg)!important;padding:0!important;display:block!important}
+  .phone{width:100%!important;max-width:none!important;height:100vh!important;border-radius:0!important;box-shadow:none!important}
+  .statusbar{display:none!important}
+  .mainbtn{display:none!important}
+  .body{padding-bottom:28px!important}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#c8ccd2;font-family:-apple-system,"SF Pro",Roboto,"Segoe UI",sans-serif;
+    display:flex;justify-content:center;padding:18px;color:var(--text)}
+  /* phone frame */
+  .phone{width:390px;max-width:100%;background:var(--bg);border-radius:34px;overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);position:relative;height:780px;display:flex;flex-direction:column}
+  .statusbar{height:30px;background:var(--bg);display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:600}
+  /* tg header */
+  .tg-head{background:var(--card);padding:12px 16px;display:flex;align-items:center;gap:10px;
+    border-bottom:1px solid var(--line)}
+  .tg-head .av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#43c463,#2b9e44);
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .tg-head .t{font-weight:700;font-size:16px}.tg-head .s{font-size:12px;color:var(--accent)}
+  .x{margin-left:auto;color:var(--sub);font-size:22px;font-weight:300}
+  /* tabs */
+  .tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line)}
+  .tab{flex:1;text-align:center;padding:11px 0;font-size:13px;font-weight:600;color:var(--sub);
+    border-bottom:2.5px solid transparent;cursor:pointer}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .body{flex:1;overflow-y:auto;padding:14px 14px 90px}
+  .pane{display:none}.pane.on{display:block}
+  .sec{font-size:12px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.4px;
+    margin:18px 6px 8px}
+  .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card+.card{margin-top:10px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .row+.row{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+  .lbl{font-size:15px}.hint{font-size:12px;color:var(--sub);margin-top:3px}
+  /* chips */
+  .chips{display:flex;gap:7px;flex-wrap:wrap}
+  .chip{padding:8px 14px;border-radius:20px;background:#eef0f3;font-size:14px;font-weight:600;color:#333;cursor:pointer;border:1.5px solid transparent}
+  .chip.on{background:var(--accent);color:#fff}
+  .chip.alt.on{background:var(--accent2)}
+  /* calendar */
+  .cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .cal-h b{font-size:15px}.cal-h span{color:var(--accent);font-size:20px;padding:4px 10px;cursor:pointer}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+  .cal .dow{font-size:11px;color:var(--sub);padding:4px 0}
+  .cal .d{padding:8px 0;font-size:14px;border-radius:9px;cursor:pointer}
+  .cal .d.mut{color:#c8ccd2}.cal .d.sel{background:var(--accent);color:#fff;font-weight:700}
+  .cal .d.we{color:var(--danger)}
+  /* slider */
+  .track{position:relative;height:34px;margin:6px 4px 0}
+  .track .bar{position:absolute;top:15px;left:0;right:0;height:4px;background:#e1e4e8;border-radius:2px}
+  .track .fill{position:absolute;top:15px;height:4px;background:var(--accent);border-radius:2px;left:12%;right:30%}
+  .track .knob{position:absolute;top:8px;width:18px;height:18px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.3);border:2px solid var(--accent)}
+  .knob.a{left:11%}.knob.b{left:68%}
+  .timeval{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);margin-top:2px}
+  /* toggle */
+  .sw{width:46px;height:28px;border-radius:16px;background:#d4d7dc;position:relative;cursor:pointer;flex:none;transition:.15s}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .sw.on{background:var(--accent2)}.sw.on::after{left:21px}
+  /* course reorder */
+  .clist .ci{display:flex;align-items:center;gap:10px;padding:11px 12px;background:#fff;border:1px solid var(--line);
+    border-radius:11px;margin-bottom:7px;font-size:14px;cursor:grab}
+  .clist .ci .gr{color:#c2c6cc;font-size:18px}.clist .ci .no{width:20px;height:20px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .clist .ci.drag{opacity:.4}.clist .ci .updown{margin-left:auto;display:flex;gap:2px}
+  .clist .ci .updown b{color:var(--accent);padding:2px 7px;font-size:15px}
+  /* watch/history cards */
+  .wc{display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px}
+  .wc .ico{font-size:20px}.wc .m{font-size:14px;font-weight:600}.wc .sub2{font-size:12px;color:var(--sub);margin-top:2px}
+  .wc .del{margin-left:auto;color:var(--danger);font-size:13px;font-weight:600}
+  .badge{font-size:11px;padding:2px 8px;border-radius:8px;font-weight:700}
+  .b-ok{background:#e4f6e8;color:#2b9e44}.b-test{background:#fdf3da;color:#b6860d}.b-on{background:#e3f0fd;color:var(--accent)}
+  .seg{display:flex;background:#eef0f3;border-radius:11px;padding:3px}
+  .seg div{flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600;border-radius:9px;color:#555;cursor:pointer}
+  .seg div.on{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  /* main button */
+  .mainbtn{position:absolute;left:14px;right:14px;bottom:16px;background:var(--accent);color:#fff;
+    text-align:center;padding:15px;border-radius:13px;font-size:16px;font-weight:700;box-shadow:0 6px 18px rgba(51,144,236,.4)}
+  .note{font-size:11px;color:var(--sub);text-align:center;margin:6px 2px 0}
+  /* time priority drag row */
+  .prio-row{display:flex;align-items:center;gap:7px;overflow-x:auto;padding:10px 2px 4px}
+  .phint{font-size:11px;color:var(--sub);flex:none;font-weight:600}
+  .tchip{padding:10px 14px;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;
+    font-weight:700;cursor:grab;flex:none;position:relative;user-select:none}
+  .tchip:active{cursor:grabbing}
+  .tchip.dragover{outline:2px dashed var(--accent);outline-offset:2px;opacity:.6}
+  .tchip .pn{position:absolute;top:-7px;left:-7px;width:17px;height:17px;border-radius:50%;background:#fff;
+    color:var(--accent);font-size:10px;display:flex;align-items:center;justify-content:center;
+    border:1.5px solid var(--accent);font-weight:800}
+  .arrow{flex:none;color:var(--sub);font-size:13px}
+  /* settings group banner */
+  .grp{margin:18px 2px 9px;padding:11px 13px;border-radius:12px;font-weight:800;font-size:14px;
+    display:flex;align-items:center;gap:7px}
+  .grp.weekend{background:linear-gradient(135deg,#e3f0fd,#eaf3fe);color:var(--accent)}
+  .grp.common{background:#ebedf0;color:#3a3f47}
+  .grp .gs{font-weight:600;font-size:11px;color:var(--sub);margin-left:auto}
+  .subsec{font-size:12px;color:var(--sub);font-weight:600;margin:12px 6px 6px}
+  /* status strip (pause) */
+  .statusstrip{display:flex;align-items:center;gap:8px;padding:9px 16px;background:#eafaf0;
+    font-size:13px;font-weight:700;color:#1f8a4c;border-bottom:1px solid var(--line)}
+  .statusstrip .dot{width:8px;height:8px;border-radius:50%;background:#2bbf5d}
+  .statusstrip.paused{background:#fdeceb;color:#c0392b}.statusstrip.paused .dot{background:#e0533d}
+  .statusstrip .ssbtn{margin-left:auto;background:#fff;border:1px solid currentColor;padding:6px 13px;
+    border-radius:10px;font-size:12px;cursor:pointer;font-weight:700}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>⛳ BCG 봇 · 미니앱</span><span>100% 🔋</span></div>
+  <div class="tg-head">
+    <div class="av">⛳</div>
+    <div><div class="t">BCG 골프봇</div><div class="s">mini app</div></div>
+    <div class="x">✕</div>
+  </div>
+  <div class="statusstrip" id="ss"><span class="dot"></span><b id="sstxt">가동 중</b><span class="ssbtn" id="ssbtn">⏸ 일시정지</span></div>
+  <div class="tabs">
+    <div class="tab on" data-p="add">➕ 감시 추가</div>
+    <div class="tab" data-p="set">⚙️ 설정</div>
+    <div class="tab" data-p="list">📋 목록·기록</div>
+  </div>
+
+  <div class="body">
+    <!-- ADD -->
+    <div class="pane on" id="add">
+      <div class="sec">날짜</div>
+      <div class="card">
+        <div class="chips" style="margin-bottom:12px">
+          <div class="chip">오늘</div><div class="chip on">내일</div><div class="chip">토</div><div class="chip">일</div><div class="chip">직접선택</div>
+        </div>
+        <div class="cal-h"><span>‹</span><b>2026년 6월</b><span>›</span></div>
+        <div class="cal">
+          <div class="dow we">일</div><div class="dow">월</div><div class="dow">화</div><div class="dow">수</div><div class="dow">목</div><div class="dow">금</div><div class="dow we">토</div>
+          <div class="d mut">31</div><div class="d">1</div><div class="d">2</div><div class="d">3</div><div class="d">4</div><div class="d">5</div><div class="d we sel">6</div>
+          <div class="d we">7</div><div class="d">8</div><div class="d">9</div><div class="d">10</div><div class="d">11</div><div class="d">12</div><div class="d we">13</div>
+          <div class="d we">14</div><div class="d">15</div><div class="d">16</div><div class="d">17</div><div class="d">18</div><div class="d">19</div><div class="d we">20</div>
+        </div>
+      </div>
+
+      <div class="sec">시간대</div>
+      <div class="card">
+        <div class="hint" style="margin-bottom:4px">① 바에서 시간 범위 정하기</div>
+        <div class="track"><div class="bar"></div><div class="fill"></div><div class="knob a"></div><div class="knob b"></div></div>
+        <div class="timeval"><span>06:00</span><span style="color:var(--text);font-weight:700">06:00 ~ 10:00</span><span>22:00</span></div>
+        <div class="hint" style="margin:16px 0 0">② 우선순위 — 드래그로 순서 변경 (왼쪽이 가장 먼저 잡음)</div>
+        <div class="prio-row" id="timePrio">
+          <span class="phint">먼저</span><span class="arrow">→</span>
+          <div class="tchip" draggable="true"><span class="pn">1</span>7시</div>
+          <div class="tchip" draggable="true"><span class="pn">2</span>8시</div>
+          <div class="tchip" draggable="true"><span class="pn">3</span>6시</div>
+          <div class="tchip" draggable="true"><span class="pn">4</span>9시</div>
+          <div class="tchip" draggable="true"><span class="pn">5</span>10시</div>
+        </div>
+      </div>
+
+      <div class="sec">인원</div>
+      <div class="card">
+        <div class="row" style="margin:0;padding:0;border:none">
+          <div class="chips"><div class="chip">1</div><div class="chip on">2</div><div class="chip">3</div><div class="chip">4</div></div>
+          <div class="seg" style="width:124px;flex:none"><div class="on">이상</div><div>고정</div></div>
+        </div>
+        <div class="hint" style="margin-top:10px"><b>이상</b> = 그 인원↑면 가능한 최대로 잡음 · <b>고정</b> = 딱 그 인원만</div>
+      </div>
+
+      <div class="sec">코스 우선순위 (드래그로 순서 변경)</div>
+      <div class="card clist">
+        <div class="ci"><span class="gr">≡</span><span class="no">1</span> Rockleigh R/W 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="ci"><span class="gr">≡</span><span class="no">2</span> Valley Brook 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="ci"><span class="gr">≡</span><span class="no">3</span> Soldier Hill 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="ci"><span class="gr">≡</span><span class="no">4</span> Overpeck 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="ci"><span class="gr">≡</span><span class="no">5</span> Darlington 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="hint" style="margin-top:4px">＋ 전체 코스 / 특정 코스만 선택 가능</div>
+      </div>
+
+      <div class="sec">방식</div>
+      <div class="card"><div class="seg">
+        <div>🔔 알림만</div><div class="on">🤖 자동예약</div>
+      </div>
+      <div class="hint" style="margin-top:8px">자동예약: 슬랏 뜨면 바로 잡음. 마감 임박(전날/당일)이면 확인 버튼 먼저.</div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="pane" id="set">
+      <!-- ========== 주말 자동 감시 그룹 ========== -->
+      <div class="grp weekend">🗓 주말 자동 감시 <span class="gs">매주 자동 롤링</span></div>
+      <div class="card">
+        <div class="row"><div><div class="lbl">주말 자동 감시 켜기</div><div class="hint">다음 토 6/6 · 일 6/7 (오전 18홀, 매주 자동 이동)</div></div><div class="sw on"></div></div>
+        <div class="row"><div><div class="lbl">주말 예약 인원</div><div class="hint">1주일 전이라 자리 여유 → 딱 이 인원 고정</div></div>
+          <div class="chips"><div class="chip">2</div><div class="chip on">3</div><div class="chip">4</div></div></div>
+      </div>
+      <div class="subsec">주말 코스 우선순위 (드래그)</div>
+      <div class="card clist">
+        <div class="ci"><span class="gr">≡</span><span class="no">1</span> Rockleigh R/W 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="ci"><span class="gr">≡</span><span class="no">2</span> Valley Brook 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="ci"><span class="gr">≡</span><span class="no">3</span> Soldier Hill 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="ci"><span class="gr">≡</span><span class="no">4</span> Overpeck 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+        <div class="ci"><span class="gr">≡</span><span class="no">5</span> Darlington 18 <span class="updown"><b>▲</b><b>▼</b></span></div>
+      </div>
+      <div class="subsec">주말 시간 — 범위 + 우선순위</div>
+      <div class="card">
+        <div class="hint" style="margin-bottom:4px">① 바에서 시간 범위 정하기</div>
+        <div class="track"><div class="bar"></div><div class="fill"></div><div class="knob a"></div><div class="knob b"></div></div>
+        <div class="timeval"><span>06:00</span><span style="color:var(--text);font-weight:700">06:00 ~ 10:00</span><span>22:00</span></div>
+        <div class="hint" style="margin:16px 0 0">② 우선순위 — 드래그 (왼쪽이 먼저)</div>
+        <div class="prio-row" id="timePrio2">
+          <span class="phint">먼저</span><span class="arrow">→</span>
+          <div class="tchip" draggable="true"><span class="pn">1</span>7시</div>
+          <div class="tchip" draggable="true"><span class="pn">2</span>8시</div>
+          <div class="tchip" draggable="true"><span class="pn">3</span>6시</div>
+          <div class="tchip" draggable="true"><span class="pn">4</span>9시</div>
+          <div class="tchip" draggable="true"><span class="pn">5</span>10시</div>
+        </div>
+      </div>
+
+      <!-- ========== 공통 설정 그룹 ========== -->
+      <div class="grp common">⚙️ 공통 설정 <span class="gs">모든 예약에 적용</span></div>
+      <div class="card">
+        <div class="row"><div><div class="lbl">예약 모드</div><div class="hint">실예약 = 진짜 잡음 / 테스트 = 직전까지만</div></div>
+          <div class="seg" style="width:150px"><div class="on">실예약</div><div>테스트</div></div></div>
+        <div class="row"><div><div class="lbl">마감 임박 시 확인</div><div class="hint">전날/당일 슬랏은 버튼 확인 후 예약 (OFF=바로 예약)</div></div><div class="sw on"></div></div>
+        <div class="row"><div><div class="lbl">⏰ 티타임 리마인더</div><div class="hint">예약 전날 밤 + 당일 아침 알림 (+취소 버튼)</div></div><div class="sw on"></div></div>
+        <div class="row"><div><div class="lbl">❤️ 봇 상태 알림</div><div class="hint">멈추면 알림 + 하루 1번 정상 핑</div></div><div class="sw on"></div></div>
+        <div class="row"><div><div class="lbl">🔔 이미 예약한 날도 알림</div><div class="hint">중복 예약은 안 하되, 더 좋은 자리 뜨면 알림만</div></div><div class="sw on"></div></div>
+      </div>
+      <div class="subsec">🌧 비 자동 스킵</div>
+      <div class="card">
+        <div class="row"><div><div class="lbl">비 오면 자동 보류</div><div class="hint">강수확률 높으면 자동예약 멈추고 확인만</div></div><div class="sw on"></div></div>
+        <div class="row" style="border:none;padding-top:14px">
+          <div style="flex:1"><div class="track"><div class="bar"></div><div class="fill" style="left:0;right:40%"></div><div class="knob" style="left:58%"></div></div>
+          <div class="timeval"><span>0%</span><span>강수확률 <b style="color:var(--text)">60%</b> 이상 스킵</span><span>100%</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIST / HISTORY -->
+    <div class="pane" id="list">
+      <div class="sec">주말 자동 (항상 켜짐)</div>
+      <div class="wc"><div class="ico">🗓</div><div><div class="m">토 6/6 · 일 6/7</div><div class="sub2">오전 18홀 · 우선코스</div></div><span class="badge b-on" style="margin-left:auto">🤖 자동</span></div>
+
+      <div class="sec">즉석 감시 1건</div>
+      <div class="wc"><div class="ico">🤖</div><div><div class="m">일 5/31 · 06~09시</div><div class="sub2">4명+ · 전체코스 18홀</div></div><span class="del">삭제</span></div>
+
+      <div class="sec">예약 기록</div>
+      <div class="wc"><div class="ico">✅</div><div><div class="m">Soldier Hill 18 · 토 5/30 06:00</div><div class="sub2">3명 · 자동예약</div></div><span class="badge b-ok" style="margin-left:auto">완료</span></div>
+      <div class="wc"><div class="ico">🧪</div><div><div class="m">Valley Brook 18 · 월 6/1 10:50</div><div class="sub2">2명 · 테스트</div></div><span class="badge b-test" style="margin-left:auto">취소됨</span></div>
+      <div class="wc"><div class="ico">🗑</div><div><div class="m">Overpeck 18 · 일 5/31 17:10</div><div class="sub2">4명 · 패스함</div></div></div>
+    </div>
+  </div>
+
+  <div class="mainbtn" id="mb">➕ 이 감시 추가하기</div>
+</div>
+
+<script>
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  // ── 봇이 URL hash 로 넘긴 현재 상태 디코드 ──
+  let STATE = { settings:{}, watches:[], history:[], weekendSat:'', weekendSun:'' };
+  try {
+    const h = location.hash.replace(/^#/, '');
+    if (h) STATE = JSON.parse(decodeURIComponent(escape(atob(h.replace(/-/g,'+').replace(/_/g,'/')))));
+  } catch(e){}
+  const S = STATE.settings || {};
+
+  // ── UI 인터랙션 (탭/칩/세그/토글/달력/드래그) ──
+  const mbText={add:'➕ 이 감시 추가하기',set:'💾 설정 저장',list:''};
+  let curTab='add';
+  function showMain(){ if(!tg)return; const tx=mbText[curTab];
+    if(tx){tg.MainButton.setText(tx);tg.MainButton.show();}else{tg.MainButton.hide();} }
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');document.getElementById(t.dataset.p).classList.add('on');
+    curTab=t.dataset.p; showMain();
+  });
+  document.querySelectorAll('.chips').forEach(g=>g.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+    g.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');}));
+  document.querySelectorAll('.seg').forEach(s=>s.querySelectorAll('div').forEach(d=>d.onclick=()=>{
+    s.querySelectorAll('div').forEach(x=>x.classList.remove('on'));d.classList.add('on');}));
+  document.querySelectorAll('.sw').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
+  document.querySelectorAll('.cal .d:not(.mut)').forEach(d=>d.onclick=()=>{
+    document.querySelectorAll('.cal .d').forEach(x=>x.classList.remove('sel'));d.classList.add('sel');});
+  document.querySelectorAll('.clist').forEach(list=>list.querySelectorAll('.updown').forEach(ud=>{
+    ud.querySelectorAll('b').forEach((btn,i)=>btn.onclick=()=>{
+      const ci=btn.closest('.ci');const sib=i===0?ci.previousElementSibling:ci.nextElementSibling;
+      if(!sib||!sib.classList.contains('ci'))return;
+      i===0?list.insertBefore(ci,sib):list.insertBefore(sib,ci);
+      [...list.querySelectorAll('.ci .no')].forEach((n,j)=>n.textContent=j+1);
+    });}));
+  document.querySelectorAll('.prio-row').forEach(row=>{ let dragEl=null;
+    const renum=()=>[...row.querySelectorAll('.tchip .pn')].forEach((n,j)=>n.textContent=j+1);
+    row.querySelectorAll('.tchip').forEach(chip=>{
+      chip.addEventListener('dragstart',()=>{dragEl=chip;setTimeout(()=>chip.style.opacity='.3',0)});
+      chip.addEventListener('dragend',()=>{chip.style.opacity='';row.querySelectorAll('.tchip').forEach(c=>c.classList.remove('dragover'))});
+      chip.addEventListener('dragover',e=>{e.preventDefault();if(chip!==dragEl)chip.classList.add('dragover')});
+      chip.addEventListener('dragleave',()=>chip.classList.remove('dragover'));
+      chip.addEventListener('drop',e=>{e.preventDefault();chip.classList.remove('dragover');
+        if(!dragEl||chip===dragEl)return;const items=[...row.querySelectorAll('.tchip')];
+        items.indexOf(dragEl)<items.indexOf(chip)?chip.after(dragEl):chip.before(dragEl);renum();});
+    });});
+
+  // ── 헬퍼: 라벨로 위젯 찾기 ──
+  const rowByLabel=t=>[...document.querySelectorAll('#set .row')].find(r=>r.querySelector('.lbl')&&r.querySelector('.lbl').textContent.includes(t));
+  const swVal=t=>{const r=rowByLabel(t);return r?r.querySelector('.sw').classList.contains('on'):undefined;};
+  const setSw=(t,v)=>{const r=rowByLabel(t);if(r)r.querySelector('.sw').classList.toggle('on',!!v);};
+  const segVal=t=>{const r=rowByLabel(t);if(!r)return'';const d=r.querySelector('.seg div.on');return d?d.textContent.trim():'';};
+  const setSeg=(t,txt)=>{const r=rowByLabel(t);if(!r)return;r.querySelectorAll('.seg div').forEach(d=>d.classList.toggle('on',d.textContent.trim()===txt));};
+  const courseOrder=sel=>[...document.querySelectorAll(sel+' .ci')].map(c=>c.childNodes[2]?c.textContent.replace(/^\s*≡\s*\d+\s*/,'').replace(/▲▼/g,'').trim():'').map(s=>s.replace(/[▲▼]/g,'').trim()).filter(Boolean);
+  const timePrio=id=>[...document.querySelectorAll('#'+id+' .tchip')].map(c=>parseInt(c.textContent,10)).filter(n=>!isNaN(n));
+
+  // ── 상태 프리로드 ──
+  function preload(){
+    // 일시정지
+    if(S.paused){document.getElementById('ss').classList.add('paused');document.getElementById('sstxt').textContent='일시정지됨';document.getElementById('ssbtn').textContent='▶️ 재개';}
+    // 주말 토글/모드
+    setSw('주말 자동 감시 켜기', S.weekendAutoBook);
+    setSeg('예약 모드', S.realBooking?'실예약':'테스트');
+    setSw('마감 임박 시 확인', S.confirmNearDeadline);
+    setSw('티타임 리마인더', S.reminder);
+    setSw('봇 상태 알림', S.healthAlert);
+    setSw('이미 예약한 날도 알림', S.alertAlreadyBookedDay);
+    setSw('비 오면 자동 보류', S.rainSkip);
+    // 주말 인원
+    if(S.weekendPlayers){const r=rowByLabel('주말 예약 인원');if(r)r.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.textContent===S.weekendPlayers));}
+    // 주말 날짜 표시
+    if(STATE.weekendSat){const r=rowByLabel('주말 자동 감시 켜기');if(r)r.querySelector('.hint').textContent=`다음 토 ${md(STATE.weekendSat)} · 일 ${md(STATE.weekendSun)} (매주 자동 이동)`;}
+    // 목록 갱신
+    renderList();
+  }
+  function md(d){const [,m,day]=d.split('-');return `${+m}/${+day}`;}
+
+  function renderList(){
+    const pane=document.getElementById('list'); if(!pane)return;
+    let html=`<div class="sec">주말 자동 (항상 켜짐)</div>
+      <div class="wc"><div class="ico">🗓</div><div><div class="m">토 ${md(STATE.weekendSat||'2026-01-01')} · 일 ${md(STATE.weekendSun||'2026-01-01')}</div><div class="sub2">오전 18홀 · 우선코스</div></div><span class="badge ${S.weekendAutoBook?'b-on':'b-test'}" style="margin-left:auto">${S.weekendAutoBook?'🤖 자동':'꺼짐'}</span></div>`;
+    const w=STATE.watches||[];
+    html+=`<div class="sec">즉석 감시 ${w.length}건</div>`;
+    if(!w.length) html+=`<div class="hint" style="padding:8px">없음</div>`;
+    w.forEach(x=>{html+=`<div class="wc"><div class="ico">${x.autoBook?'🤖':'🔔'}</div><div><div class="m">${x.dateLabel} · ${String(x.hourMin).padStart(2,'0')}~${String(x.hourMax).padStart(2,'0')}시</div><div class="sub2">${x.minPlayers}명+ · 전체 18홀</div></div><span class="del" data-id="${x.id}">삭제</span></div>`;});
+    const h=STATE.history||[];
+    if(h.length){html+=`<div class="sec">예약 기록</div>`;
+      h.forEach(r=>{const ic=r.finalized?'✅':r.dryRun?'🧪':'•';const bd=r.finalized?'b-ok':'b-test';html+=`<div class="wc"><div class="ico">${ic}</div><div><div class="m">${r.course} · ${md(r.date)} ${r.time}</div><div class="sub2">${r.players}명 · ${r.source}</div></div><span class="badge ${bd}" style="margin-left:auto">${r.finalized?'완료':'테스트'}</span></div>`;});}
+    pane.innerHTML=html;
+    pane.querySelectorAll('.del').forEach(d=>d.onclick=()=>send({type:'removeWatch',id:d.dataset.id}));
+  }
+
+  // ── 전송 ──
+  function send(payload){ if(tg){tg.sendData(JSON.stringify(payload));tg.close();}else{alert('payload:\n'+JSON.stringify(payload,null,2));} }
+  function collectSettings(){
+    const r=rowByLabel('주말 예약 인원');const wp=r?(r.querySelector('.chip.on')?+r.querySelector('.chip.on').textContent:3):3;
+    return { type:'settings', settings:{
+      weekendAutoBook: !!swVal('주말 자동 감시 켜기'),
+      realBooking: segVal('예약 모드')==='실예약',
+      confirmNearDeadline: !!swVal('마감 임박 시 확인'),
+      reminder: !!swVal('티타임 리마인더'),
+      healthAlert: !!swVal('봇 상태 알림'),
+      alertAlreadyBookedDay: !!swVal('이미 예약한 날도 알림'),
+      rainSkip: !!swVal('비 오면 자동 보류'),
+      weekendPlayers: wp,
+      weekendCourses: courseOrder('#set .clist'),
+      weekendTimePriority: timePrio('timePrio2'),
+    }};
+  }
+  function collectWatch(){
+    const dateChip=document.querySelector('#add .chips .chip.on');
+    const pr=document.querySelector('#add .row .chips .chip.on'); // 인원
+    const fixed=(()=>{const s=document.querySelector('#add .seg');return s&&s.querySelector('div.on')&&s.querySelector('div.on').textContent.trim()==='고정';})();
+    const auto=(()=>{const segs=document.querySelectorAll('#add .seg');const last=segs[segs.length-1];return last&&last.querySelector('div.on')&&/자동/.test(last.querySelector('div.on').textContent);})();
+    return { type:'addWatch',
+      dateChip: dateChip?dateChip.textContent.trim():'토',
+      timePriority: timePrio('timePrio'),
+      minPlayers: pr?+pr.textContent:2, fixed, autoBook:auto,
+      courses: courseOrder('#add .clist'),
+    };
+  }
+
+  if(tg){ tg.MainButton.onClick(()=>{ if(curTab==='add')send(collectWatch()); else if(curTab==='set')send(collectSettings()); }); }
+  document.getElementById('ssbtn').onclick=()=>{ const p=!document.getElementById('ss').classList.contains('paused'); send({type:'pause',paused:p}); };
+
+  preload(); showMain();
+</script>
+</body>
+</html>
